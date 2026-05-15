@@ -18,14 +18,18 @@ jobs:
           password: ${{ secrets.CR_PAT }}
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
+      - name: Set image repository
+        id: image
+        shell: bash
+        run: echo "image_repo=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
         with:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:latest
-            ghcr.io/${{ github.repository }}:${{ github.sha }}
+            ${{ steps.image.outputs.image_repo }}:latest
+            ${{ steps.image.outputs.image_repo }}:${{ github.sha }}
       - name: Update GitOps repository
         shell: bash
         env:
@@ -42,10 +46,11 @@ jobs:
           git clone https://github.com/ByronTechCoder/grade-api-gitops.git gitops
           cd gitops
           
+          IMAGE_REPO="ghcr.io/${GITHUB_REPOSITORY,,}"
           if [[ "$OSTYPE" == "darwin"* ]]; then
-            sed -i '' "s|image: ghcr.io/${{ github.repository }}:.*|image: ghcr.io/${{ github.repository }}:${{ github.sha }}|g" deployment.yaml
+            sed -i '' "s|image: ghcr.io/.*:.*|image: ${IMAGE_REPO}:${{ github.sha }}|g" deployment.yaml
           else
-            sed -i "s|image: ghcr.io/${{ github.repository }}:.*|image: ghcr.io/${{ github.repository }}:${{ github.sha }}|g" deployment.yaml
+            sed -i "s|image: ghcr.io/.*:.*|image: ${IMAGE_REPO}:${{ github.sha }}|g" deployment.yaml
           fi
           
           # Commit changes
